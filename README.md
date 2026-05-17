@@ -15,7 +15,6 @@ A chat-based AI layout editing tool that updates design JSON using natural langu
 
 Frontend:
 - React
-- Vite
 
 Backend:
 - Node.js
