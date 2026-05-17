@@ -6,191 +6,185 @@ router.post("/", async (req, res) => {
   try {
     const { message, layout } = req.body;
 
-    const updatedLayout =
-      JSON.parse(JSON.stringify(layout));
+    const updatedLayout = structuredClone(layout);
+    const lowerMessage = message.toLowerCase();
 
-    const rootId =
-      updatedLayout.rootNodes[0];
+    const rootId = updatedLayout.rootNodes[0];
+    const artboard = updatedLayout.nodes[rootId];
 
-    const artboard =
-      updatedLayout.nodes[rootId];
-
-    const lower =
-      message.toLowerCase();
-
-    // Find nodes
-    const nodes = Object.values(
-      updatedLayout.nodes
-    );
+    // Find important nodes
+    const nodes = Object.values(updatedLayout.nodes);
 
     const headline = nodes.find(
       (node) =>
         node.type === "text" &&
-        node.data?.content
-          ?.toLowerCase()
-          .includes("luxury")
-    );
-
-    const offerBadge = nodes.find(
-      (node) =>
-        node.type === "text" &&
-        node.data?.content
-          ?.toLowerCase()
-          .includes("20%")
+        node.data?.content?.toLowerCase().includes("luxury")
     );
 
     const product = nodes.find(
       (node) =>
-        node.name
-          ?.toLowerCase()
-          .includes("product")
+        node.name?.toLowerCase().includes("product")
     );
 
-    let explanation =
-      "Instruction applied.";
+    const discountBadge = nodes.find(
+      (node) =>
+        node.data?.content?.toLowerCase().includes("20%")
+    );
 
-    // 1. Convert to 9:16
+    const offerText = nodes.find(
+      (node) =>
+        node.data?.content?.toLowerCase().includes("limited time")
+    );
+
+    let explanation = "Instruction understood";
+
+    // ====================================
+    // Convert to 9:16
+    // ====================================
     if (
-      lower.includes("9:16") ||
-      lower.includes("convert")
+      lowerMessage.includes("9:16") ||
+      lowerMessage.includes("convert")
     ) {
       artboard.width = 1080;
       artboard.height = 1920;
 
-      artboard.children.forEach((id) => {
-        const node =
-          updatedLayout.nodes[id];
+      artboard.children.forEach((childId) => {
+        const node = updatedLayout.nodes[childId];
 
         if (
-          node.nx !== undefined
+          node.nx !== undefined &&
+          node.ny !== undefined
         ) {
-          node.x =
-            node.nx *
-            artboard.width;
-
-          node.y =
-            node.ny *
-            artboard.height;
-
-          node.width =
-            node.nw *
-            artboard.width;
-
-          node.height =
-            node.nh *
-            artboard.height;
+          node.x = node.nx * 1080;
+          node.y = node.ny * 1920;
+          node.width = node.nw * 1080;
+          node.height = node.nh * 1920;
         }
       });
 
       explanation =
-        "Converted design to 9:16";
+        "Converted design to 9:16 format";
     }
 
-    // 2. Move headline to top
+    // ====================================
+    // Keep product large
+    // ====================================
     if (
-      lower.includes("headline") &&
-      lower.includes("top")
+      lowerMessage.includes("product large") ||
+      lowerMessage.includes("keep the product large")
+    ) {
+      if (product) {
+        product.width *= 1.2;
+        product.height *= 1.2;
+      }
+
+      explanation = "Made product larger";
+    }
+
+    // ====================================
+    // Move headline to top
+    // ====================================
+    if (
+      lowerMessage.includes("headline") &&
+      lowerMessage.includes("top")
     ) {
       if (headline) {
-        headline.y = 50;
+        headline.y = 60;
         headline.ny =
-          50 / artboard.height;
+          headline.y / artboard.height;
       }
 
       explanation =
         "Moved headline to top";
     }
 
-    // 3. Move offer badge higher
+    // ====================================
+    // Offer badge higher
+    // ====================================
     if (
-      lower.includes("offer") ||
-      lower.includes("badge")
+      lowerMessage.includes("offer badge") &&
+      lowerMessage.includes("higher")
     ) {
-      if (
-        lower.includes("higher")
-      ) {
-        offerBadge.y -= 100;
-        offerBadge.ny =
-          offerBadge.y /
-          artboard.height;
-
-        explanation =
-          "Moved offer badge higher";
+      if (offerText) {
+        offerText.y -= 100;
+        offerText.ny =
+          offerText.y / artboard.height;
       }
+
+      explanation =
+        "Moved offer badge higher";
     }
 
-    // 4. Make headline smaller
+    // ====================================
+    // Headline smaller
+    // ====================================
     if (
-      lower.includes("headline") &&
-      lower.includes("smaller")
+      lowerMessage.includes("headline smaller") ||
+      lowerMessage.includes("make the headline smaller")
     ) {
-      headline.style.visual.fontSize -=
-        10;
+      if (headline) {
+        headline.style.visual.fontSize -= 12;
+      }
 
       explanation =
         "Made headline smaller";
     }
 
-    // 5. Headline color red
+    // ====================================
+    // Headline color red
+    // ====================================
     if (
-      lower.includes("headline") &&
-      lower.includes("red")
+      lowerMessage.includes("headline color") &&
+      lowerMessage.includes("red")
     ) {
-      headline.style.visual.color =
-        {
+      if (headline) {
+        headline.style.visual.color = {
           type: "solid",
           value: "#FF0000"
         };
+      }
 
       explanation =
         "Changed headline color to red";
     }
 
-    // 6. Discount badge bigger
+    // ====================================
+    // Discount badge bigger
+    // ====================================
     if (
-      lower.includes("discount") ||
-      lower.includes("badge bigger")
+      lowerMessage.includes("discount badge") &&
+      lowerMessage.includes("bigger")
     ) {
-      offerBadge.width *= 1.3;
-      offerBadge.height *=
-        1.3;
+      if (discountBadge) {
+        discountBadge.width *= 1.3;
+        discountBadge.height *= 1.3;
+
+        discountBadge.style.visual.fontSize += 10;
+      }
 
       explanation =
         "Made discount badge bigger";
     }
 
-    // 7. Center product
+    // ====================================
+    // Center product
+    // ====================================
     if (
-      lower.includes("center") &&
-      lower.includes("product")
+      lowerMessage.includes("center the product")
     ) {
-      product.x =
-        (artboard.width -
-          product.width) /
-        2;
+      if (product) {
+        product.x =
+          (artboard.width - product.width) / 2;
 
-      product.nx =
-        product.x /
-        artboard.width;
+        product.nx =
+          product.x / artboard.width;
+      }
 
       explanation =
-        "Centered product";
+        "Centered the product";
     }
 
-    // 8. Keep product large
-    if (
-      lower.includes("product") &&
-      lower.includes("large")
-    ) {
-      product.width *= 1.2;
-      product.height *=
-        1.2;
-
-      explanation =
-        "Kept product large";
-    }
-
-    res.json({
+    return res.json({
       updatedLayout,
       explanation
     });
@@ -198,8 +192,7 @@ router.post("/", async (req, res) => {
     console.error(error);
 
     res.status(500).json({
-      explanation:
-        "Something went wrong"
+      error: "Something went wrong"
     });
   }
 });
