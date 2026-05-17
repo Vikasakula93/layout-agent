@@ -151,7 +151,7 @@ Add:
 
 ```env
 PORT=3001
-OPENAI_API_KEY=your_api_key_here
+OPENAI_API_KEY=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
 ```
 
 > Note: API key is optional in the current implementation because layout transformations are handled through backend transformation logic.
